@@ -131,7 +131,9 @@
 	var addFreqBtn = document.querySelector("#add-frequency-btn");
 	addFreqBtn.addEventListener("click", (e)=>
 	{
-		list.appendChild(document.createElement("input"));
+		var addInp = document.createElement("input");
+		addInp.type="number";
+		list.appendChild(addInp);
 	});
 
 	var copyBtn = document.querySelector("#copy-link");
