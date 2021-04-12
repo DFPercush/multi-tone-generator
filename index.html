@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Multi tone generator</title>
+</head>
+<style>
+	body {
+		background-color: #252525;
+		color: #CDCDCD;
+	}
+	input {
+		display:block;
+		flex-shrink: 1;
+	}
+	#add-frequency-btn {
+		margin: 10px;
+	}
+	#desc {
+		width: 90vw;
+	}
+
+	/* .shrink {
+		display:flex;
+		flex-direction: column;
+	} */
+</style>
+<body>
+	<h1>Multi tone generator</h1>
+	<h3>Loudness warning: headphone users beware!</h3>
+	Description:<br>
+	<input id="desc">
+	<p>Enter a list of frequencies in Hz. </p>
+	<div>
+		<div id="frequency-list">
+
+		</div>
+		<button id="add-frequency-btn">+</button>
+		<button id="play-btn">Play</button>
+	</div>
+	<!-- <div><a id="link" href="">Here's a link to this data</a></div> -->
+	<div><button id="copy-link">Copy data link</button></div>
+</body>
+
+<script>
+	
+	const urlParams = new URLSearchParams(window.location.search);
+	var addFreq;
+	var i = 1;
+	var list = document.querySelector("#frequency-list");
+	var desc = document.querySelector("#desc");
+	desc.value = urlParams.get("desc");
+	do
+	{
+		addFreq = null;
+		addFreq = urlParams.get("f" + i.toString());
+		if (!addFreq) {break;}
+		var inp = document.createElement("input");
+		inp.value = addFreq.toString();
+		list.appendChild(inp);
+		i++;
+	} while (addFreq);
+
+	const PitchFactor = 1000000;
+	var frequencies = [];
+	var osc = [];
+
+	function Play()
+	{
+
+		frequencies = [];
+		for (var inp of list.children)
+		{
+			var f = 0;
+			if (inp.value.length > 0) f = parseFloat(inp.value);
+			if (f && (f > 0))
+			{
+				frequencies.push(f);
+			}
+		}
+
+
+		var AudioContext = window.AudioContext || window.webkitAudioContext;
+		var cx = new AudioContext({});
+		var mux = cx.createChannelMerger(frequencies.length);
+		
+		var mono = null;
+		var monomux = cx.audioWorklet.addModule("mono-mix.js").then
+		(
+			()=>
+			{
+				mono = new AudioWorkletNode(cx, 'mono-mix');
+				mux.connect(mono);
+				mono.connect(cx.destination);
+				for (var x of osc) {x.start();}
+			}
+		);
+
+
+		for (var i = 0; i < frequencies.length; i++)
+		{
+			console.log(frequencies[i]);
+			osc[i] = cx.createOscillator();
+			osc[i].frequency.value = frequencies[i];
+			osc[i].type = "sine";
+			osc[i].connect(mux, 0, i);
+		}
+	}
+
+	function Stop()
+	{
+		for (var i in osc) { osc[i].stop(); }
+	}
+
+	var playing = false;
+	var playButton = document.querySelector("#play-btn");
+	playButton.addEventListener("click", (e)=> {
+		playing = !playing;
+		if (playing)
+		{
+			playButton.innerHTML = "Stop";
+			Play();
+		}
+		else
+		{
+			Stop();
+			playButton.innerHTML = "Play";
+		}
+	} );
+
+	var addFreqBtn = document.querySelector("#add-frequency-btn");
+	addFreqBtn.addEventListener("click", (e)=>
+	{
+		list.appendChild(document.createElement("input"));
+	});
+
+	var copyBtn = document.querySelector("#copy-link");
+	copyBtn.addEventListener("click", (e)=>
+	{
+		var i = 1;
+		var qstr = window.location.origin + window.location.pathname + "?desc=" + encodeURIComponent(desc.value);
+		for (c of list.children)
+		{
+			var f = parseFloat(c.value);
+			if (f > 0)
+			{
+				qstr += "&f" + i.toString() + "=" + encodeURIComponent(f);
+				i++;
+			}
+		}
+		navigator.clipboard.writeText(qstr);
+		copyBtn.innerHTML = "Copied!";
+		setTimeout(()=>{copyBtn.innerHTML = "Copy data link"}, 2000);
+	});
+
+</script>
+
+
+</html>
